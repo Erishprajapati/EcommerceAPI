@@ -65,6 +65,13 @@ def show_users(db:Session = Depends(get_db)):
     users = db.query(models.User).all()
     return users
 
+
+@app.delete('/user/delete/{user_id}')
+def delete_user(user_id:int, db:Session = Depends(get_db))->None:
+    db.query(models.User).filter(models.User.id == user_id).delete(synchronize_session=False)
+    db.commit()
+    return 'User deleted successfully'
+
 @app.post('/add_product')
 def add_product(request: schemas.Product, db:Session = Depends(get_db)):
     try:
@@ -125,3 +132,4 @@ def product_fetch(product_id: int, product_name: Optional[str] = None,db: Sessio
             detail="Product not found"
         )
     return product
+
