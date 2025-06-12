@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from database import engine, SessionLocal
 from database import Base
-import models, schemas
+import models, schemas, hashing
 from typing import Optional
 from sqlalchemy.exc import IntegrityError
 
@@ -41,7 +41,7 @@ def register_user(request: schemas.User, db: Session = Depends(get_db)):
                 detail="Username already registered"
             )
         
-        new_user = models.User(name=request.name, email=request.email, password=request.password)
+        new_user = models.User(name=request.name, email=request.email, password=hashing.Hash.bcrypt(request.password))
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -66,11 +66,25 @@ def show_users(db:Session = Depends(get_db)):
     return users
 
 
+@app.put('/user/{user_id}/update')
+def update_user(user_id:int, request: schemas.User, db:Session = Depends(get_db)):
+    updated_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not updated_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f'User with user_id{user_id} not found.')
+    updated_user.name = request.name
+    updated_user.email = request.email
+    updated_user.password = hashing.Hash.bcrypt(request.password)
+    db.commit()
+    db.refresh(updated_user)
+    return {"Message" : "User updated with information",'Information': updated_user}
+    
 @app.delete('/user/delete/{user_id}')
 def delete_user(user_id:int, db:Session = Depends(get_db))->None:
-    db.query(models.User).filter(models.User.id == user_id).delete(synchronize_session=False)
+    result = db.query(models.User).filter(models.User.id == user_id).delete(synchronize_session=False)
     db.commit()
-    return 'User deleted successfully'
+    if result == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"User with {user_id} not found")
+    return {"message" : "User deleted succesfully"}
 
 @app.post('/add_product')
 def add_product(request: schemas.Product, db:Session = Depends(get_db)):
@@ -118,6 +132,14 @@ def all_products(db:Session = Depends(get_db)):
     product = db.query(models.Product).all()
     return {"Message": "Showing all the products from database", 'product': product}
 
+@app.delete('/product/{product_id}/delete')
+def delete_product(product_id:int, db:Session = Depends(get_db)):
+    result = db.query(models.Product).filter(models.Product.id == product_id).delete(synchronize_session=False)
+    db.commit()
+    if result == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"Product with id {product_id} not found")
+    return "Product deletion succesful"
+
 @app.get('/product/{product_id}')
 def product_fetch(product_id: int, product_name: Optional[str] = None,db: Session = Depends(get_db)):
     # Fix the filter condition - use proper SQLAlchemy syntax
@@ -133,3 +155,15 @@ def product_fetch(product_id: int, product_name: Optional[str] = None,db: Sessio
         )
     return product
 
+@app.put('/product/{product_id}/update')
+def update_product(product_id:int, request: schemas.Product, db:Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f'Product of id{product_id} not found')
+    product.name = request.name
+    product.description = request.description
+    product.price = request.price
+    product.is_available = request.is_available
+    db.commit()
+    db.refresh(product)
+    return {"Message" : "Product sucessfully updated", "product":product}
