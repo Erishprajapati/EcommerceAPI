@@ -11,10 +11,36 @@
         </ul>
     </nav>
     
-    <div class="main-content">
-        <h1>Welcome to Ecommerce</h1>
-        <p>Browse store and get delivered within 48 hours!</p>
+    <div id="product-list"></div>
+
+<script>
+async function fetchAndDisplayProducts() {
+try {
+    const response = await fetch('/all_products?skip=0&limit=10');
+    if (!response.ok) throw new Error('Failed to fetch products');
+
+    const products = await response.json();
+
+    const container = document.getElementById('product-list');
+    container.innerHTML = products.map(product => `
+    <div class="product-card">
+        <h3>${product.name}</h3>
+        <img src="${product.image ? '/' + product.image : '/static/images/dwarika.jpg'}" alt="${product.name}" width="150"
+            onerror="this.onerror=null;this.src='/static/images/default.jpg';" />
+        <p>${product.description}</p>
+        <p>Price: $${product.price.toFixed(2)}</p>
+        <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
     </div>
+    `).join('');
+} catch (error) {
+    console.error('Error loading products:', error);
+    document.getElementById('product-list').innerText = 'Failed to load products.';
+}
+}
+
+window.addEventListener('DOMContentLoaded', fetchAndDisplayProducts);
+</script>
+
 
 <script>
     // Simple check for user logged in status (example only)

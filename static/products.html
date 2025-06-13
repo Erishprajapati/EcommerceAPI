@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>All Products</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel = "stylesheet" href = "/static/style.css">
+    <link rel="stylesheet" href="/static/product.css">
 </head>
 <body>
     <nav>
@@ -63,14 +64,15 @@
                 }
 
                 container.innerHTML = products.map(product => `
-                    <div class="product-card">
-                        <h3>${product.name}</h3>
-                        <img src="${product.image}" alt="${product.name}" width="150" />
-                        <p>${product.description}</p>
-                        <p>Price: $${product.price.toFixed(2)}</p>
-                        <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
-                    </div>
-                `).join('');
+                <div class="product-card">
+                    <h3>${product.name}</h3>
+                    <img src="${product.image || '/static/images/dwarika.jpg'}" alt="${product.name}" width="150" />
+                    <p>${product.description}</p>
+                    <p>Price: $${product.price.toFixed(2)}</p>
+                    <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
+                </div>
+            `).join('');
+
             } catch (error) {
                 document.getElementById('products-container').innerHTML = `<p>Error loading products: ${error.message}</p>`;
             }
