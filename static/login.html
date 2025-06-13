@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h2>Login</h2>
+    <input type="email" id="login-email" placeholder="Email"><br>
+    <input type="password" id="login-password" placeholder="Password"><br>
+    <button onclick="loginUser()">Login</button>
+    <p id="login-response"></p>
+
+<script>
+    function loginUser() {
+    const loginData = {
+        email: document.getElementById("login-email").value,
+        password: document.getElementById("login-password").value
+    };
+
+    fetch('/user/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(loginData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+    document.getElementById("login-response").innerText = "Login successful!";
+    console.log("Token:", data.access_token);
+    localStorage.setItem("token", data.access_token);
+    localStorage.setItem('loggedIn', 'true');
+    
+    window.location.href = "/static/index.html";
+})
+
+    .catch(error => {
+        document.getElementById("login-response").innerText = `Error: ${error.detail || "Invalid credentials"}`;
+    });
+}
+
+</script>
+</body>
+</html>
+<!-- .then(data => {
+    document.getElementById("response").innerText = `User created: ${data.name}`;
+    // ✅ Redirect to login.html after 1s
+    setTimeout(() => {
+        window.location.href = "/static/login.html";
+    }, 1000);
+}) -->

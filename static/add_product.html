@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Product</title>
+</head>
+<body>
+    <h1>Add New Product</h1>
+    <form id="productForm" enctype="multipart/form-data">
+        <label>Name: <input type="text" id="name" name="name" required></label><br>
+        <label>Description: <textarea id="description" name="description"></textarea></label><br>
+        <label>Price: <input type="number" id="price" name="price" required step="0.01"></label><br>
+        <label>Available: <input type="checkbox" id="is_available" name="is_available"></label><br>
+        <label>Image: <input type="file" id="image" name="image" accept="image/*" required></label><br>
+        <button type="submit">Add Product</button>
+    </form>
+
+    <script>
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            // For checkbox, send boolean as string
+            formData.set('is_available', document.getElementById('is_available').checked);
+
+            try {
+                const res = await fetch('/add_product', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('Product added successfully!\nID: ' + data.id + '\nImage URL: ' + data.image_url);
+                    this.reset();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Products</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav>
+        <ul id="navbar" class="navbar"></ul>
+    </nav>
+
+    <h1>All Products</h1>
+
+    <!-- Container for products -->
+    <div id="products-container"></div>
+
+    <script>
+        function isLoggedIn() {
+            return localStorage.getItem('loggedIn') === 'true';
+        }
+
+        function renderNavbar() {
+            const navbar = document.getElementById('navbar');
+            navbar.innerHTML = '';
+
+            if (isLoggedIn()) {
+                navbar.innerHTML = `
+                    <li><a href="/static/index.html">Home</a></li>
+                    <li><a href="/static/products.html">Products</a></li>
+                    <li><a href="/static/add_product.html">Add Product</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
+                `;
+                document.getElementById('logout-link').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (confirm("Are you sure you want to logout?")) {
+                        localStorage.removeItem('loggedIn');
+                        localStorage.removeItem('token');
+                        alert("Logout successful!");
+                        window.location.href = '/static/login.html';
+                    }
+                });
+            } else {
+                navbar.innerHTML = `
+                    <li><a href="/static/index.html">Home</a></li>
+                    <li><a href="/static/products.html">Products</a></li>
+                    <li><a href="/static/login.html">Login</a></li>
+                    <li><a href="/static/register.html">Register</a></li>
+                `;
+            }
+        }
+
+        async function loadProducts() {
+            try {
+                // Fetch products from your FastAPI endpoint
+                const response = await fetch('/all_products?skip=0&limit=10');
+                if (!response.ok) throw new Error('Failed to fetch products');
+                const products = await response.json();
+
+                const container = document.getElementById('products-container');
+                if (products.length === 0) {
+                    container.innerHTML = '<p>No products available.</p>';
+                    return;
+                }
+
+                container.innerHTML = products.map(product => `
+                    <div class="product-card">
+                        <h3>${product.name}</h3>
+                        <img src="${product.image}" alt="${product.name}" width="150" />
+                        <p>${product.description}</p>
+                        <p>Price: $${product.price.toFixed(2)}</p>
+                        <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('products-container').innerHTML = `<p>Error loading products: ${error.message}</p>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar();
+            loadProducts();
+        });
+    </script>
+</body>
+</html>

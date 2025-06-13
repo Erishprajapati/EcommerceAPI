@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 # class Book(BaseModel):
 #     title:str
 #     description:str
@@ -13,8 +14,16 @@ class User(BaseModel):
     email:str
     password:str
 
+class Login(BaseModel):
+    email:str
+    password:str
 class Product(BaseModel):
-    name:str
-    description:str
-    price:int
-    is_available:bool
+    id: int
+    name: str
+    description: Optional[str] = None
+    price: int
+    is_available: bool
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True  # allows loading from ORM objects

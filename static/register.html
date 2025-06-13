@@ -1,11 +1,19 @@
-function getData() {
-    fetch('/api/hello')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("response").innerText = data.message;
-        });
-}
-function registerUser() {
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h2>Register User</h2>
+    <input type="text" id="name" placeholder="Name"><br>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="registerUser()">Register</button>
+    <p id="response"></p>
+
+    <script>
+        function registerUser() {
     const userData = {
         name: document.getElementById("name").value,
         email: document.getElementById("email").value,
@@ -27,9 +35,16 @@ function registerUser() {
     })
     .then(data => {
         document.getElementById("response").innerText = `User created: ${data.name}`;
+        // ✅ Redirect to login.html after 1s
+        setTimeout(() => {
+            window.location.href = "/static/login.html";
+        }, 1000);
     })
     .catch(error => {
         document.getElementById("response").innerText = `Error: ${error.detail || "Unknown error"}`;
     });
 }
 
+    </script>
+</body>
+</html>

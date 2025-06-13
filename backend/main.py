@@ -1,13 +1,27 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from database import engine, SessionLocal
 from database import Base
 import models, schemas, hashing
+from schemas import Login
 from typing import Optional
+from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
+from hashing import Hash
+from auth_token import create_access_token
+from oauth2 import get_current_user
+from fastapi.staticfiles import StaticFiles
+from typing import List
+import shutil
+import os
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="../static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -17,6 +31,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.get("/")
+def serve_home():
+    return FileResponse("../static/index.html")
 
 @app.post('/create_user')
 def register_user(request: schemas.User, db: Session = Depends(get_db)):
@@ -58,6 +76,24 @@ def register_user(request: schemas.User, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}"
         )
+    
+@app.post('/user/login')
+def login_user(request: Login, db:Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail = 'Invalid credentials'
+            )
+    if not Hash.verify(request.password, user.password):
+        raise HTTPException(
+            status_code= status.HTTP_404_NOT_FOUND, detail = "invalid password"
+        )
+    token = create_access_token(data={"user_id": user.id})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.get('/profile')
+def get_profile(current_user: dict = Depends(get_current_user)):
+    return {"user": current_user}
 
 '''getting all the registered user as the api'''
 @app.get('/registered_user')
@@ -86,51 +122,72 @@ def delete_user(user_id:int, db:Session = Depends(get_db))->None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"User with {user_id} not found")
     return {"message" : "User deleted succesfully"}
 
-@app.post('/add_product')
-def add_product(request: schemas.Product, db:Session = Depends(get_db)):
-    try:
-        print("Received request:", request.dict())
-        
-        # Check for existing product (case-insensitive)
-        existing_product = db.query(models.Product).filter(
-            func.lower(models.Product.name) == request.name.lower()
-        ).first()
+if not os.path.exists("images"):
+    os.makedirs("images")
 
-        print("Existing product found?", existing_product is not None)
+app.mount("/images", StaticFiles(directory="images"), name="images")
 
-        if existing_product:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Product already exists"
-            )
 
-        new_product = models.Product(
-            name=request.name,
-            description=request.description,
-            price=request.price,
-            is_available=request.is_available
-        )
-        db.add(new_product)
-        db.commit()
-        db.refresh(new_product)
-        return {"message": "Product has been added", "product": new_product}
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Database constraint violation. Product might already exist."
-        )
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}"
-        )
 
-@app.get('/all_products')
-def all_products(db:Session = Depends(get_db)):
-    product = db.query(models.Product).all()
-    return {"Message": "Showing all the products from database", 'product': product}
+@app.post("/add_product", response_model=schemas.Product)
+async def add_product(
+    name: str = Form(...),
+    description: str = Form(None),
+    price: float = Form(...),
+    is_available: bool = Form(False),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    # Check for existing product (case-insensitive)
+    existing = db.query(models.Product).filter(func.lower(models.Product.name) == name.lower()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Product already exists")
+
+    # Save uploaded image to 'images' folder
+    image_location = f"images/{image.filename}"
+    with open(image_location, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+
+    new_product = models.Product(
+        name=name,
+        description=description,
+        price=price,
+        is_available=is_available,
+        image_url=f"/images/{image.filename}"
+    )
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+
+    return new_product
+    # Check if product already exists (case-insensitive)
+    existing = db.query(Product).filter(func.lower(Product.name) == name.lower()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Product already exists")
+
+    # Save uploaded image file
+    image_location = f"images/{image.filename}"
+    with open(image_location, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+
+    new_product = Product(
+        name=name,
+        description=description,
+        price=price,
+        is_available=is_available,
+        image_url=f"/images/{image.filename}"
+    )
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+    return new_product
+
+@app.get("/all_products", response_model=List[schemas.Product])
+def all_products(skip: int = 0, limit: int = 10, name: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Product)
+    if name:
+        query = query.filter(models.Product.name.ilike(f'{name}%'))
+    return query.offset(skip).limit(limit).all()
 
 @app.delete('/product/{product_id}/delete')
 def delete_product(product_id:int, db:Session = Depends(get_db)):
