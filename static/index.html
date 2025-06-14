@@ -10,7 +10,10 @@
         <ul id="navbar" class="navbar"></ul>
     </nav>
 
-    <h1>Welcome to ShopEase</h1>
+    <a href="/static/index.html" style="text-decoration: none; color: inherit;">
+        <h1>Welcome to ShopEase</h1>
+    </a>
+    
     <p class="subtitle">Discover amazing products at unbeatable prices</p>
 
     <!-- Container for products -->
@@ -50,6 +53,7 @@
                     <li><a href="/static/index.html">Home</a></li>
                     <li><a href="/static/products.html">Products</a></li>
                     <li><a href="/static/add_product.html">Add Product</a></li>
+                    <li><a href="/static/cart.html">Cart</a></li>
                     <li><a href="#" id="logout-link">Logout</a></li>
                 `;
                 document.getElementById('logout-link').addEventListener('click', function(e) {
@@ -67,6 +71,7 @@
                     <li><a href="/static/products.html">Products</a></li>
                     <li><a href="/static/login.html">Login</a></li>
                     <li><a href="/static/register.html">Register</a></li>
+                    
                 `;
             }
         }
