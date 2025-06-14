@@ -1,0 +1,118 @@
+/* General page styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 20px;
+    perspective: 1200px; /* For 3D effect */
+}
+
+/* Navbar */
+.navbar {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    padding: 10px 0;
+    margin-bottom: 30px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.navbar li a {
+    text-decoration: none;
+    font-weight: 600;
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: background 0.3s, color 0.3s;
+    display: inline-block;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+.navbar li a:hover {
+    background: #4a90e2;
+    color: white;
+    box-shadow: 0 5px 15px rgba(74, 144, 226, 0.5);
+    transform: translateZ(10px) scale(1.1);
+}
+
+/* Heading */
+h1 {
+    text-align: center;
+    color: #222;
+    margin-bottom: 40px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Products container */
+#products-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px;
+}
+
+/* Product card with 3D style */
+.product-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow:
+        0 5px 15px rgba(0, 0, 0, 0.1),
+        inset 0 -3px 10px rgba(255, 255, 255, 0.3);
+    text-align: center;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s;
+    transform-style: preserve-3d;
+    cursor: default;
+    perspective: 800px;
+}
+
+.product-card:hover {
+    transform: translateY(-10px) translateZ(30px) scale(1.05);
+    box-shadow:
+        0 12px 25px rgba(0, 0, 0, 0.25),
+        inset 0 -3px 12px rgba(255, 255, 255, 0.5);
+}
+
+/* Product title */
+.product-card h3 {
+    margin-bottom: 15px;
+    font-weight: 700;
+    color: #222;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+/* Product image */
+.product-card img {
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    width: 150px;
+    height: auto;
+    transition: transform 0.35s ease;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+.product-card:hover img {
+    transform: translateZ(20px) scale(1.1);
+}
+
+/* Product description and price */
+.product-card p {
+    margin: 8px 0;
+    color: #555;
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+
+/* Available status */
+.product-card p:last-child {
+    font-weight: 600;
+    color: #4caf50;
+}
+
+.product-card p:last-child:contains("No") {
+    color: #f44336;
+}

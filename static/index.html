@@ -1,92 +1,176 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ecommerce</title>
+    <title>ShopEase - Home</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/homepage.css">
 </head>
 <body>
     <nav>
-        <ul id="navbar" class="navbar">
-            <!-- Nav items will be inserted here dynamically -->
-        </ul>
+        <ul id="navbar" class="navbar"></ul>
     </nav>
-    
+
+    <h1>Welcome to ShopEase</h1>
+    <p class="subtitle">Discover amazing products at unbeatable prices</p>
+
+    <!-- Container for products -->
     <div id="product-list"></div>
 
-<script>
-async function fetchAndDisplayProducts() {
-try {
-    const response = await fetch('/all_products?skip=0&limit=10');
-    if (!response.ok) throw new Error('Failed to fetch products');
-
-    const products = await response.json();
-
-    const container = document.getElementById('product-list');
-    container.innerHTML = products.map(product => `
-    <div class="product-card">
-        <h3>${product.name}</h3>
-        <img src="${product.image ? '/' + product.image : '/static/images/dwarika.jpg'}" alt="${product.name}" width="150"
-            onerror="this.onerror=null;this.src='/static/images/default.jpg';" />
-        <p>${product.description}</p>
-        <p>Price: $${product.price.toFixed(2)}</p>
-        <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
+    <!-- Pagination -->
+    <div class="pagination-container">
+        <div class="pagination-info">
+            <span id="pagination-info">Showing 1-10 of 0 products</span>
+        </div>
+        <div class="pagination">
+            <button id="prevBtn" onclick="previousPage()" disabled>Previous</button>
+            <div id="pageNumbers" class="page-numbers">
+                <!-- Page numbers will be generated here -->
+            </div>
+            <button id="nextBtn" onclick="nextPage()" disabled>Next</button>
+        </div>
     </div>
-    `).join('');
-} catch (error) {
-    console.error('Error loading products:', error);
-    document.getElementById('product-list').innerText = 'Failed to load products.';
-}
-}
 
-window.addEventListener('DOMContentLoaded', fetchAndDisplayProducts);
-</script>
+    <script>
+        // Global variables for pagination
+        let currentPage = 1;
+        let totalPages = 1;
+        let allProducts = [];
+        const productsPerPage = 10;
 
-
-<script>
-    // Simple check for user logged in status (example only)
-    function isLoggedIn() {
-        return localStorage.getItem('loggedIn') === 'true';
-    }
-
-    function renderNavbar() {
-        const navbar = document.getElementById('navbar');
-        navbar.innerHTML = '';  // Clear existing links
-
-        if (isLoggedIn()) {
-            // Logged in view: Add Product + Logout
-            navbar.innerHTML = `
-                <li><a href="/static/index.html">Home</a></li>
-                <li><a href="/static/products.html">Products</a></li>
-                <li><a href="/static/add_product.html">Add Product</a></li>
-                <li><a href="#" id="logout-link">Logout</a></li>
-            `;
-
-            document.getElementById('logout-link').addEventListener('click', function(e) {
-                e.preventDefault();
-                if (confirm("Are you sure you want to logout?")) {
-                    // Clear login flag (or token) from storage
-                    localStorage.removeItem('loggedIn');
-                    alert("Logout successful!");
-                    // Redirect to login page
-                    window.location.href = '/static/login.html';
-                }
-            });
-
-        } else {
-            // Not logged in view: Login + Register
-            navbar.innerHTML = `
-                <li><a href="/static/index.html">Home</a></li>
-                <li><a href="/static/products.html">Products</a></li>
-                <li><a href="/static/login.html">Login</a></li>
-                <li><a href="/static/register.html">Register</a></li>
-            `;
+        function isLoggedIn() {
+            return localStorage.getItem('loggedIn') === 'true';
         }
-    }
 
-    // On page load, render the navbar
-    renderNavbar();
-</script>
-<script src="/frontend/navbar.js"></script>
+        function renderNavbar() {
+            const navbar = document.getElementById('navbar');
+            navbar.innerHTML = '';
 
+            if (isLoggedIn()) {
+                navbar.innerHTML = `
+                    <li><a href="/static/index.html">Home</a></li>
+                    <li><a href="/static/products.html">Products</a></li>
+                    <li><a href="/static/add_product.html">Add Product</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
+                `;
+                document.getElementById('logout-link').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (confirm("Are you sure you want to logout?")) {
+                        localStorage.removeItem('loggedIn');
+                        localStorage.removeItem('token');
+                        alert("Logout successful!");
+                        window.location.href = '/static/login.html';
+                    }
+                });
+            } else {
+                navbar.innerHTML = `
+                    <li><a href="/static/index.html">Home</a></li>
+                    <li><a href="/static/products.html">Products</a></li>
+                    <li><a href="/static/login.html">Login</a></li>
+                    <li><a href="/static/register.html">Register</a></li>
+                `;
+            }
+        }
+
+        async function fetchAndDisplayProducts(page = 1) {
+            try {
+                // Fetch all products first
+                const response = await fetch('/all_products?skip=0&limit=1000');
+                if (!response.ok) throw new Error('Failed to fetch products');
+
+                allProducts = await response.json();
+                
+                // Calculate pagination
+                totalPages = Math.ceil(allProducts.length / productsPerPage);
+                currentPage = Math.min(page, totalPages);
+                currentPage = Math.max(currentPage, 1);
+
+                // Get products for current page
+                const startIndex = (currentPage - 1) * productsPerPage;
+                const endIndex = startIndex + productsPerPage;
+                const productsToShow = allProducts.slice(startIndex, endIndex);
+
+                displayProducts(productsToShow);
+                updatePagination();
+
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('product-list').innerHTML = `<p>Error loading products: ${error.message}</p>`;
+            }
+        }
+
+        function displayProducts(products) {
+            const container = document.getElementById('product-list');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<p>No products available.</p>';
+                return;
+            }
+
+            container.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <h3>Name: ${product.name}</h3>
+                    <img src="${product.image_url || '/static/images/default.jpg'}" alt="${product.name}" width="150"
+                        onerror="this.onerror=null;this.src='/static/images/default.jpg';" />
+                    <p>${product.description}</p>
+                    <p>Price: Nrs ${product.price.toFixed(2)}</p>
+                    <p>Available: ${product.is_available ? 'Yes' : 'No'}</p>
+                </div>
+            `).join('');
+        }
+
+        function updatePagination() {
+            const startProduct = (currentPage - 1) * productsPerPage + 1;
+            const endProduct = Math.min(currentPage * productsPerPage, allProducts.length);
+            
+            document.getElementById('pagination-info').textContent = 
+                `Showing ${startProduct}-${endProduct} of ${allProducts.length} products`;
+
+            // Update page numbers
+            const pageNumbersContainer = document.getElementById('pageNumbers');
+            pageNumbersContainer.innerHTML = '';
+
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === currentPage ? 'page-btn active' : 'page-btn';
+                pageBtn.onclick = () => goToPage(i);
+                pageNumbersContainer.appendChild(pageBtn);
+            }
+
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            fetchAndDisplayProducts(currentPage);
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                goToPage(currentPage - 1);
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                goToPage(currentPage + 1);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar();
+            fetchAndDisplayProducts();
+        });
+    </script>
 </body>
 </html>
