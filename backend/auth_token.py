@@ -1,9 +1,10 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+import os
 
-SECRET_KEY = "your_secret_key"  # Replace with a strong random key
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key_change_this_in_production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 def create_access_token(data: dict):
     to_encode = data.copy()

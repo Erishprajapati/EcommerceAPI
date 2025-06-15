@@ -17,6 +17,7 @@ class User(BaseModel):
 class Login(BaseModel):
     email:str
     password:str
+
 class Product(BaseModel):
     id: int
     name: str
@@ -38,7 +39,7 @@ class CartItemResponse(BaseModel):
     quantity: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CartItemWithProduct(BaseModel):
@@ -47,4 +48,4 @@ class CartItemWithProduct(BaseModel):
     product: Product
 
     class Config:
-        orm_mode = True
+        from_attributes = True

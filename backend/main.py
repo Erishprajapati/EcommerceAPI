@@ -1,22 +1,33 @@
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
-from database import engine, SessionLocal
-from database import Base
-import models, schemas, hashing
-from schemas import Login
+from backend.database import engine, SessionLocal
+from backend.database import Base
+import backend.models as models
+import backend.schemas as schemas
+import backend.hashing as hashing
+from backend.schemas import Login
 from typing import Optional
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
-from hashing import Hash
-from auth_token import create_access_token
-from oauth2 import get_current_user
+from backend.hashing import Hash
+from backend.auth_token import create_access_token
+from backend.oauth2 import get_current_user
 from fastapi.staticfiles import StaticFiles
 from typing import List
 import shutil
 import os
 
 app = FastAPI()
+
+# Create static directory and mount static files
+static_dir = os.path.join(os.getcwd(), "static")
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+if not os.path.exists(os.path.join(static_dir, "images")):
+    os.makedirs(os.path.join(static_dir, "images"))
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 Base.metadata.create_all(bind=engine)
 
@@ -133,9 +144,9 @@ async def add_product(
         raise HTTPException(status_code=400, detail="Product already exists")
 
     # Save uploaded image to 'static/images' folder
-    image_dir = "../static/images"
+    image_dir = os.path.join(os.getcwd(), "static", "images")
     os.makedirs(image_dir, exist_ok=True)
-    image_location = f"{image_dir}/{image.filename}"
+    image_location = os.path.join(image_dir, image.filename)
     
     try:
         with open(image_location, "wb") as buffer:
@@ -212,9 +223,9 @@ def update_product_image(product_id: int, image: UploadFile = File(...), db: Ses
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Product of id {product_id} not found')
     
     # Save uploaded image to 'static/images' folder
-    image_dir = "../static/images"
+    image_dir = os.path.join(os.getcwd(), "static", "images")
     os.makedirs(image_dir, exist_ok=True)
-    image_location = f"{image_dir}/{image.filename}"
+    image_location = os.path.join(image_dir, image.filename)
     with open(image_location, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
     
@@ -261,3 +272,7 @@ def add_to_cart(item: schemas.CartItemCreate, db: Session = Depends(get_db)):
 def get_cart(db: Session = Depends(get_db)):
     cart_items = db.query(models.CartItem).options(joinedload(models.CartItem.product)).all()
     return cart_items
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
