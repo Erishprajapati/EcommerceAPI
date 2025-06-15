@@ -38,7 +38,9 @@ def get_db():
     finally:
         db.close()
 
-
+@app.get("/")
+def read_root():
+    return {"message": "Ecommerce API is running! 🚀"}
 
 @app.post('/create_user')
 def register_user(request: schemas.User, db: Session = Depends(get_db)):
