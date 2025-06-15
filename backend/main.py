@@ -1,6 +1,5 @@
-
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 from database import engine, SessionLocal
 from database import Base
@@ -19,10 +18,6 @@ import os
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="../static"), name="static")
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
 Base.metadata.create_all(bind=engine)
 
 def get_db():
@@ -32,9 +27,7 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/")
-def serve_home():
-    return FileResponse("../static/index.html")
+
 
 @app.post('/create_user')
 def register_user(request: schemas.User, db: Session = Depends(get_db)):
@@ -125,10 +118,6 @@ def delete_user(user_id:int, db:Session = Depends(get_db))->None:
 if not os.path.exists("images"):
     os.makedirs("images")
 
-app.mount("/images", StaticFiles(directory="images"), name="images")
-
-
-
 @app.post("/add_product", response_model=schemas.Product)
 async def add_product(
     name: str = Form(...),
@@ -143,44 +132,35 @@ async def add_product(
     if existing:
         raise HTTPException(status_code=400, detail="Product already exists")
 
-    # Save uploaded image to 'images' folder
-    image_location = f"images/{image.filename}"
-    with open(image_location, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+    # Save uploaded image to 'static/images' folder
+    image_dir = "../static/images"
+    os.makedirs(image_dir, exist_ok=True)
+    image_location = f"{image_dir}/{image.filename}"
+    
+    try:
+        with open(image_location, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        print(f"Image saved successfully to: {image_location}")
+    except Exception as e:
+        print(f"Error saving image: {e}")
+        raise HTTPException(status_code=500, detail=f"Error saving image: {str(e)}")
 
+    # Save product with correct image URL path
+    image_url = f"/static/images/{image.filename}"
     new_product = models.Product(
         name=name,
         description=description,
         price=price,
         is_available=is_available,
-        image_url=f"/images/{image.filename}"
+        image_url=image_url  # served from FastAPI static files
     )
     db.add(new_product)
     db.commit()
     db.refresh(new_product)
-
+    
+    print(f"Product created with image_url: {image_url}")
     return new_product
-    # Check if product already exists (case-insensitive)
-    existing = db.query(Product).filter(func.lower(Product.name) == name.lower()).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Product already exists")
 
-    # Save uploaded image file
-    image_location = f"images/{image.filename}"
-    with open(image_location, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
-
-    new_product = Product(
-        name=name,
-        description=description,
-        price=price,
-        is_available=is_available,
-        image_url=f"/images/{image.filename}"
-    )
-    db.add(new_product)
-    db.commit()
-    db.refresh(new_product)
-    return new_product
 
 @app.get("/all_products", response_model=List[schemas.Product])
 def all_products(skip: int = 0, limit: int = 10, name: Optional[str] = None, db: Session = Depends(get_db)):
@@ -224,3 +204,60 @@ def update_product(product_id:int, request: schemas.Product, db:Session = Depend
     db.commit()
     db.refresh(product)
     return {"Message" : "Product sucessfully updated", "product":product}
+
+@app.put('/product/{product_id}/update_image')
+def update_product_image(product_id: int, image: UploadFile = File(...), db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Product of id {product_id} not found')
+    
+    # Save uploaded image to 'static/images' folder
+    image_dir = "../static/images"
+    os.makedirs(image_dir, exist_ok=True)
+    image_location = f"{image_dir}/{image.filename}"
+    with open(image_location, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+    
+    # Update product image URL
+    product.image_url = f"/static/images/{image.filename}"
+    db.commit()
+    db.refresh(product)
+    return {"Message": "Product image successfully updated", "product": product}
+
+@app.get('/fix_product_images')
+def fix_product_images(db: Session = Depends(get_db)):
+    """Fix existing product image URLs to use the correct static path"""
+    products = db.query(models.Product).all()
+    fixed_count = 0
+    
+    for product in products:
+        if product.image_url and product.image_url.startswith('/images/'):
+            # Update old /images/ paths to /static/images/
+            product.image_url = product.image_url.replace('/images/', '/static/images/')
+            fixed_count += 1
+    
+    if fixed_count > 0:
+        db.commit()
+        return {"message": f"Fixed {fixed_count} product image URLs"}
+    else:
+        return {"message": "No product image URLs needed fixing"}
+
+
+@app.post('/product/cart', response_model=schemas.CartItemResponse)
+def add_to_cart(item: schemas.CartItemCreate, db: Session = Depends(get_db)):
+    # Check if product exists
+    product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Add to cart
+    cart_item = models.CartItem(product_id=item.product_id, quantity=item.quantity)
+    db.add(cart_item)
+    db.commit()
+    db.refresh(cart_item)
+
+    return cart_item
+@app.get("/cart", response_model=List[schemas.CartItemWithProduct])
+def get_cart(db: Session = Depends(get_db)):
+    cart_items = db.query(models.CartItem).options(joinedload(models.CartItem.product)).all()
+    return cart_items

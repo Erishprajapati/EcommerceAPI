@@ -26,4 +26,25 @@ class Product(BaseModel):
     image_url: Optional[str] = None
 
     class Config:
-        from_attributes = True  # allows loading from ORM objects
+        from_attributes = True  # allows loading from ORM 
+        
+class CartItemCreate(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+class CartItemResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+
+    class Config:
+        orm_mode = True
+
+
+class CartItemWithProduct(BaseModel):
+    id: int
+    quantity: int
+    product: Product
+
+    class Config:
+        orm_mode = True
