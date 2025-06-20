@@ -42,7 +42,7 @@ def get_db():
 def read_root():
     return {"message": "Ecommerce API is running! 🚀"}
 
-@app.post('/create_user')
+@app.post('/create_user', tags = ["user"])
 def register_user(request: schemas.User, db: Session = Depends(get_db)):
     try:
         # Check for existing email (case-insensitive)
@@ -83,7 +83,7 @@ def register_user(request: schemas.User, db: Session = Depends(get_db)):
             detail=f"An error occurred: {str(e)}"
         )
     
-@app.post('/user/login')
+@app.post('/user/login', tags = ['user'])
 def login_user(request: Login, db:Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == request.email).first()
     if not user:
@@ -97,18 +97,18 @@ def login_user(request: Login, db:Session = Depends(get_db)):
     token = create_access_token(data={"user_id": user.id})
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get('/profile')
+@app.get('/profile', tags =['user'])
 def get_profile(current_user: dict = Depends(get_current_user)):
     return {"user": current_user}
 
 '''getting all the registered user as the api'''
-@app.get('/registered_user')
+@app.get('/registered_user', tags = ['user'])
 def show_users(db:Session = Depends(get_db)):
     users = db.query(models.User).all()
     return users
 
 
-@app.put('/user/{user_id}/update')
+@app.put('/user/{user_id}/update', tags = ['user'])
 def update_user(user_id:int, request: schemas.User, db:Session = Depends(get_db)):
     updated_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not updated_user:
@@ -120,7 +120,7 @@ def update_user(user_id:int, request: schemas.User, db:Session = Depends(get_db)
     db.refresh(updated_user)
     return {"Message" : "User updated with information",'Information': updated_user}
     
-@app.delete('/user/delete/{user_id}')
+@app.delete('/user/delete/{user_id}', tags = ['user'])
 def delete_user(user_id:int, db:Session = Depends(get_db))->None:
     result = db.query(models.User).filter(models.User.id == user_id).delete(synchronize_session=False)
     db.commit()
@@ -131,7 +131,7 @@ def delete_user(user_id:int, db:Session = Depends(get_db))->None:
 if not os.path.exists("images"):
     os.makedirs("images")
 
-@app.post("/add_product", response_model=schemas.Product)
+@app.post("/add_product", response_model=schemas.Product, tags =['products'])
 async def add_product(
     name: str = Form(...),
     description: str = Form(None),
@@ -175,14 +175,14 @@ async def add_product(
     return new_product
 
 
-@app.get("/all_products", response_model=List[schemas.Product])
+@app.get("/all_products", response_model=List[schemas.Product], tags=['products'])
 def all_products(skip: int = 0, limit: int = 10, name: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(models.Product)
     if name:
         query = query.filter(models.Product.name.ilike(f'{name}%'))
     return query.offset(skip).limit(limit).all()
 
-@app.delete('/product/{product_id}/delete')
+@app.delete('/product/{product_id}/delete', tags=['products'])
 def delete_product(product_id:int, db:Session = Depends(get_db)):
     result = db.query(models.Product).filter(models.Product.id == product_id).delete(synchronize_session=False)
     db.commit()
@@ -190,7 +190,7 @@ def delete_product(product_id:int, db:Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"Product with id {product_id} not found")
     return "Product deletion succesful"
 
-@app.get('/product/{product_id}')
+@app.get('/product/{product_id}', tags = ['products'])
 def product_fetch(product_id: int, product_name: Optional[str] = None,db: Session = Depends(get_db)):
     # Fix the filter condition - use proper SQLAlchemy syntax
     query = db.query(models.Product).filter(models.Product.id == product_id)
@@ -205,7 +205,7 @@ def product_fetch(product_id: int, product_name: Optional[str] = None,db: Sessio
         )
     return product
 
-@app.put('/product/{product_id}/update')
+@app.put('/product/{product_id}/update', tags = ['products'])
 def update_product(product_id:int, request: schemas.Product, db:Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
@@ -218,7 +218,7 @@ def update_product(product_id:int, request: schemas.Product, db:Session = Depend
     db.refresh(product)
     return {"Message" : "Product sucessfully updated", "product":product}
 
-@app.put('/product/{product_id}/update_image')
+@app.put('/product/{product_id}/update_image', tags = ['products'])
 def update_product_image(product_id: int, image: UploadFile = File(...), db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
@@ -237,7 +237,7 @@ def update_product_image(product_id: int, image: UploadFile = File(...), db: Ses
     db.refresh(product)
     return {"Message": "Product image successfully updated", "product": product}
 
-@app.get('/fix_product_images')
+@app.get('/fix_product_images', tags = ['products'])
 def fix_product_images(db: Session = Depends(get_db)):
     """Fix existing product image URLs to use the correct static path"""
     products = db.query(models.Product).all()
@@ -256,7 +256,7 @@ def fix_product_images(db: Session = Depends(get_db)):
         return {"message": "No product image URLs needed fixing"}
 
 
-@app.post('/product/cart', response_model=schemas.CartItemResponse)
+@app.post('/product/cart', response_model=schemas.CartItemResponse, tags = ['products'])
 def add_to_cart(item: schemas.CartItemCreate, db: Session = Depends(get_db)):
     # Check if product exists
     product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
@@ -270,7 +270,7 @@ def add_to_cart(item: schemas.CartItemCreate, db: Session = Depends(get_db)):
     db.refresh(cart_item)
 
     return cart_item
-@app.get("/cart", response_model=List[schemas.CartItemWithProduct])
+@app.get("/cart", response_model=List[schemas.CartItemWithProduct], tags = ['products'])
 def get_cart(db: Session = Depends(get_db)):
     cart_items = db.query(models.CartItem).options(joinedload(models.CartItem.product)).all()
     return cart_items
